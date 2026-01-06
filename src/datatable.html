@@ -2,9 +2,12 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
     <title>Data Tables</title>
-    <link href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css"  rel="stylesheet">
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css" rel="stylesheet">
+
     <style>
       #loader {
         transition: all 0.3s ease-in-out;
@@ -16,14 +19,7 @@
         background: #fff;
         z-index: 90000;
       }
-
-      #loader.fadeOut {
-        opacity: 0;
-        visibility: hidden;
-      }
-
-
-
+      #loader.fadeOut { opacity: 0; visibility: hidden; }
       .spinner {
         width: 40px;
         height: 40px;
@@ -32,608 +28,434 @@
         left: calc(50% - 20px);
         background-color: #333;
         border-radius: 100%;
-        -webkit-animation: sk-scaleout 1.0s infinite ease-in-out;
         animation: sk-scaleout 1.0s infinite ease-in-out;
       }
-
-      @-webkit-keyframes sk-scaleout {
-        0% { -webkit-transform: scale(0) }
-        100% {
-          -webkit-transform: scale(1.0);
-          opacity: 0;
-        }
-      }
-
       @keyframes sk-scaleout {
-        0% {
-          -webkit-transform: scale(0);
-          transform: scale(0);
-        } 100% {
-          -webkit-transform: scale(1.0);
-          transform: scale(1.0);
-          opacity: 0;
-        }
+        0% { transform: scale(0); }
+        100% { transform: scale(1.0); opacity: 0; }
       }
+     /* ACTION BUTTONS FIX */
+    .action-btn {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-edit { background: #28a745; }
+    .btn-delete { background: #dc3545; }
+
+#modalOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 999999;   /* FIX */
+}
+
+#crudModal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+  max-height:90%;
+  border-radius: 10px;
+  z-index: 1000000;   /* FIX */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* INPUTS */
+#crudModal input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+
+
+/* Show action buttons */
+.action-btn {
+    visibility: visible !important;
+    display: inline-block !important;
+    opacity: 1 !important;
+    background: #007bff;
+    color: #fff;
+    padding: 5px 8px;
+    margin-right: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Force DataTables to show last column (Actions column) */
+table.dataTable td:last-child,
+table.dataTable th:last-child {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: auto !important;
+}
+
+/* Prevent DataTables from hiding any columns */
+td.dtr-hidden, 
+th.dtr-hidden {
+    display: table-cell !important;
+}
+td.no-hide, th.no-hide {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
     </style>
   </head>
- 
-<script src="https://cdn.datatables.net/2.1.3/js/dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/2.1.3/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- jQuery + DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+  <script defer src="main.js"></script>
 
 <script>
-    $(document).ready(function () {
-      const accessToken = "YOUR_ACCESS_TOKEN_HERE"; // optional
+// -------------------------------
+// Get URL Parameter
+// -------------------------------
+function getQueryParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
 
-      // 🔹 Dummy data array
-      const dummyData = [
-        {
-          id: 1,
-          test_text: "Sample Data 1",
-          test_integer: 123,
-          test_float: 45.67,
-          test_boolean: true,
-          test_date: "2025-11-10",
-          test_time: "12:34:00",
-          test_datetime: "2025-11-10T12:34:00Z",
-          tenant_name: "Tenant A"
-        },
-        {
-          id: 2,
-          test_text: "Sample Data 2",
-          test_integer: 456,
-          test_float: 78.90,
-          test_boolean: false,
-          test_date: "2025-11-09",
-          test_time: "09:15:00",
-          test_datetime: "2025-11-09T09:15:00Z",
-          tenant_name: "Tenant B"
-        },
-        {
-          id: 3,
-          test_text: "Sample Data 3",
-          test_integer: 789,
-          test_float: 12.34,
-          test_boolean: true,
-          test_date: "2025-11-08",
-          test_time: "08:00:00",
-          test_datetime: "2025-11-08T08:00:00Z",
-          tenant_name: "Tenant C"
-        }
-      ];
+const resource = getQueryParam("resource");
 
-      // 🔹 Initialize DataTable
-      const table = $('#dataTable').DataTable({
-        ajax: {
-          url: 'https://paas-uat.v3nity.com/api/resource/common/data/testtable',
-          type: 'GET',
-          headers: {
-            'Authorization': accessToken
-          },
-          dataSrc: '',
-          error: function (xhr) {
-            console.warn('⚠️ API not working, loading dummy data instead...');
-            // 🔹 Load dummy data manually if API fails
-            table.clear().rows.add(dummyData).draw();
-          }
-        },
-        columns: [
-          { data: 'id' },
-          { data: 'test_text' },
-          { data: 'test_integer' },
-          { data: 'test_float' },
-          { 
-            data: 'test_boolean',
-            render: function (data) {
-              return data ? '✅ True' : '❌ False';
-            }
-          },
-          { data: 'test_date' },
-          { data: 'test_time' },
-          { data: 'test_datetime' },
-          { data: 'tenant_name' }
-        ],
-        pageLength: 10,
-        responsive: true
+if (!resource) {
+  window.location.href = "datatable.html?resource=testtable";
+}
+
+let table;
+let editingId = null;
+
+// -------------------------------
+// Build Dynamic Form
+// -------------------------------
+function buildDynamicForm(rowData) {
+  let html = "";
+  for (let key in rowData) {
+    if (key === "id") continue;
+    html += `
+      <label>${key}</label>
+      <input type="text" name="${key}" value="${rowData[key] || ""}">
+    `;
+  }
+  $("#crudForm").html(html);
+}
+
+// -------------------------------
+// Save (POST / PUT)
+// -------------------------------
+function saveRecord(id) {
+
+  // For edit → clone full record
+  let payload = id ? { ...window.currentRecord } : {};
+
+  // Overwrite with updated form values
+  $("#crudForm input").each(function () {
+    payload[$(this).attr("name")] = $(this).val();
+  });
+
+    // REMOVE NON-WRITABLE FIELDS
+  delete payload.tenant_name;
+  delete payload.pagination_total_count;
+
+  console.log("=== CLEANED PAYLOAD FOR PUT ===");
+  console.log(payload);
+  
+  $.ajax({
+    url: id
+      ? `https://paas-uat.v3nity.com/api/resource/common/data/${resource}?id=${id}`
+      : `https://paas-uat.v3nity.com/api/resource/common/data/${resource}`,
+    method: id ? "PUT" : "POST",
+    headers: {
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
+      "V3-PaaS-App-Key": "d3204ea1c3e2415da315236dc2686494",
+    },
+    contentType: "application/json",
+    data: JSON.stringify(payload),
+    success: function () {
+     
+     closeModal()
+      loadGenericDataTable();
+    },
+  error: function (xhr) {
+  console.log("=== PUT ERROR RAW ===");
+  console.log(xhr);
+  console.log("=== PUT ERROR RESPONSE TEXT ===");
+  console.log(xhr.responseText);
+
+  console.log("=== PUT ERROR RESPONSE JSON ===");
+  try { console.log(JSON.parse(xhr.responseText)); }
+  catch(e) { console.log("Response not JSON"); }
+}
+  });
+}
+
+
+// -------------------------------
+// Delete
+// -------------------------------
+function deleteRecord(id) {
+  if (!confirm("Delete this record?")) return;
+
+  $.ajax({
+    url: `https://paas-uat.v3nity.com/api/resource/common/data/${resource}?id=${id}`,
+    method: "DELETE",
+    headers: {
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
+      "V3-PaaS-App-Key": "d3204ea1c3e2415da315236dc2686494",
+    },
+    success: function () {
+      loadGenericDataTable();
+    },
+    error: function (xhr) {
+      console.error("DELETE ERROR:", xhr.responseText);
+      alert("Delete failed! Status: " + xhr.status);
+    }
+  });
+}
+// -------------------------------
+// Load DataTable
+// -------------------------------
+function loadGenericDataTable() {
+  $.ajax({
+    url: `https://paas-uat.v3nity.com/api/resource/common/data/${resource}`,
+    method: "GET",
+    headers: {
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
+      "V3-PaaS-App-Key": "d3204ea1c3e2415da315236dc2686494",
+    },
+    success: function (response) {
+
+      const data = response.data || response || [];
+
+      if (!data.length) {
+        alert("No data found!");
+        return;
+      }
+
+      // Reset only thead + tbody (IMPORTANT)
+      $("#tableHead").empty();
+      $("#dataTable tbody").empty();
+
+      const columns = [];
+      let headerHtml = "";
+
+      Object.keys(data[0]).forEach(key => {
+
+      if (key === "pagination_total_count") return; // <-- REMOVE HERE
+
+        columns.push({ data: key });
+        headerHtml += `<th>${key}</th>`;
       });
-    });
 
+      // Add action column
+      columns.push({
+        data: null,
+        render: (data, type, row) => {
+          if (!row.id) return "";
+          return `
+            <button class="action-btn btn-edit" data-id="${row.id}">✏</button>
+            <button class="action-btn btn-delete" data-id="${row.id}">🗑 </button>
+          `;
+        }
+      });
+
+      headerHtml += `<th>Actions</th>`;
+      $("#tableHead").html(headerHtml);
+
+      if ($.fn.DataTable.isDataTable("#dataTable")) {
+        $("#dataTable").DataTable().destroy();
+      }
+
+     table = $("#dataTable").DataTable({
+    data: data,
+    columns: columns,
+    responsive: false,
+    autoWidth: false,
+     scrollX: true,
+    columnDefs: [
+        { targets: -1, orderable: false, className: "no-hide" }
+    ],
+     info: false 
+});
+
+
+console.log("Columns:", $('#dataTable').DataTable().columns().header().map(h => $(h).text()).toArray());
+
+// force fix after draw
+$('#dataTable').on('draw.dt', function () {
+    $('#dataTable th:last-child, #dataTable td:last-child')
+        .css("display", "table-cell");
+});
+
+      document.getElementById("loader").classList.add("fadeOut");
+    }
+  });
+}
+function openModal() {
+  $("#modalOverlay").show();
+  $("#crudModal").show();
+}
+
+function closeModal() {
+  $("#crudModal").hide();
+  $("#modalOverlay").hide();
+}
+// -------------------------------
+// Event Listeners
+// -------------------------------
+$(document).ready(function () {
+
+  loadGenericDataTable();
+
+  // EDIT
+  $("#dataTable").on("click", ".btn-edit", function () {
+    editingId = $(this).data("id");
+
+    const rowData = table.row($(this).closest("tr")).data();
+
+    buildDynamicForm(rowData);
+    $("#modalTitle").text("Edit Record");
+    openModal();
+  });
+
+  // DELETE
+  $("#dataTable").on("click", ".btn-delete", function () {
+    deleteRecord($(this).data("id"));
+  });
+
+  // SAVE
+  $("#btnSave").click(() => saveRecord(editingId));
+});
 </script>
+
+
+
   <body class="app">
-    <!-- @TOC -->
-    <!-- =================================================== -->
-    <!--
-      + @Page Loader
-      + @App Content
-          - #Left Sidebar
-              > $Sidebar Header
-              > $Sidebar Menu
 
-          - #Main
-              > $Topbar
-              > $App Screen Content
-    -->
-
-    <!-- @Page Loader -->
-    <!-- =================================================== -->
-    <div id='loader'>
-      <div class="spinner"></div>
-    </div>
-
+    <div id="loader"><div class="spinner"></div></div>
     <script>
-      window.addEventListener('load', function load() {
-        const loader = document.getElementById('loader');
-        setTimeout(function() {
-          loader.classList.add('fadeOut');
-        }, 300);
+      window.addEventListener('load', () => {
+        setTimeout(() => { document.getElementById('loader').classList.add('fadeOut'); }, 300);
       });
     </script>
 
-    <!-- @App Content -->
-    <!-- =================================================== -->
-    <div>
-      <!-- #Left Sidebar ==================== -->
-      <div class="sidebar">
-        <div class="sidebar-inner">
-          <!-- ### $Sidebar Header ### -->
-          <div class="sidebar-logo">
-            <div class="peers ai-c fxw-nw">
-              <div class="peer peer-greed">
-                <a class="sidebar-link td-n" href="/">
-                  <div class="peers ai-c fxw-nw">
-                    <div class="peer">
-                      <div class="logo">
-                        <img src="assets/static/images/logo.svg" alt="">
-                      </div>
-                    </div>
-                    <div class="peer peer-greed">
-                      <h5 class="lh-1 mB-0 logo-text">Adminator</h5>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="peer">
-                <div class="mobile-toggle sidebar-toggle">
-                  <a href="" class="td-n">
-                    <i class="ti-arrow-circle-left"></i>
-                  </a>
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-logo">
+          <div class="peers ai-c fxw-nw">
+            <div class="peer peer-greed">
+              <a class="sidebar-link td-n" href="/">
+                <div class="peers ai-c fxw-nw">
+                  <div class="peer"><div class="logo"><img src="assets/static/images/PAAS logo.jpeg" alt=""></div></div>
+                  <div class="peer peer-greed"><h5 class="lh-1 mB-0 logo-text">Adminator</h5></div>
                 </div>
+              </a>
+            </div>
+            <div class="peer">
+              <div class="mobile-toggle sidebar-toggle">
+                <a href="" class="td-n"><i class="ti-arrow-circle-left"></i></a>
               </div>
             </div>
           </div>
-
-          <!-- ### $Sidebar Menu ### -->
-          <ul class="sidebar-menu scrollable pos-r">
-            <li class="nav-item mT-30">
-              <a class="sidebar-link" href="index.html">
-                <span class="icon-holder">
-                  <i class="c-blue-500 ti-home"></i>
-                </span>
-                <span class="title">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="email.html">
-                <span class="icon-holder">
-                  <i class="c-brown-500 ti-email"></i>
-                </span>
-                <span class="title">Email</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="compose.html">
-                <span class="icon-holder">
-                  <i class="c-blue-500 ti-share"></i>
-                </span>
-                <span class="title">Compose</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="calendar.html">
-                <span class="icon-holder">
-                  <i class="c-deep-orange-500 ti-calendar"></i>
-                </span>
-                <span class="title">Calendar</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="chat.html">
-                <span class="icon-holder">
-                  <i class="c-deep-purple-500 ti-comment-alt"></i>
-                </span>
-                <span class="title">Chat</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="charts.html">
-                <span class="icon-holder">
-                  <i class="c-indigo-500 ti-bar-chart"></i>
-                </span>
-                <span class="title">Charts</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="forms.html">
-                <span class="icon-holder">
-                  <i class="c-light-blue-500 ti-pencil"></i>
-                </span>
-                <span class="title">Forms</span>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="sidebar-link" href="ui.html">
-                <span class="icon-holder">
-                    <i class="c-pink-500 ti-palette"></i>
-                  </span>
-                <span class="title">UI Elements</span>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                  <i class="c-orange-500 ti-layout-list-thumb"></i>
-                </span>
-                <span class="title">Tables</span>
-                <span class="arrow">
-                  <i class="ti-angle-right"></i>
-                </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a class='sidebar-link' href="basic-table.html">Basic Table</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="datatable.html">Data Table</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                    <i class="c-purple-500 ti-map"></i>
-                  </span>
-                <span class="title">Maps</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a href="google-maps.html">Google Map</a>
-                </li>
-                <li>
-                  <a href="vector-maps.html">Vector Map</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                    <i class="c-red-500 ti-files"></i>
-                  </span>
-                <span class="title">Pages</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a class='sidebar-link' href="blank.html">Blank</a>
-                </li> 
-                <li>
-                  <a class='sidebar-link' href="404.html">404</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="500.html">500</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="signin.html">Sign In</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="signup.html">Sign Up</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                  <i class="c-teal-500 ti-view-list-alt"></i>
-                </span>
-                <span class="title">Multiple Levels</span>
-                <span class="arrow">
-                  <i class="ti-angle-right"></i>
-                </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li class="nav-item dropdown">
-                  <a href="javascript:void(0);">
-                    <span>Menu Item</span>
-                  </a>
-                </li>
-                <li class="nav-item dropdown">
-                  <a href="javascript:void(0);">
-                    <span>Menu Item</span>
-                    <span class="arrow">
-                      <i class="ti-angle-right"></i>
-                    </span>
-                  </a>
-                  <ul class="dropdown-menu">
-                    <li>
-                      <a href="javascript:void(0);">Menu Item</a>
-                    </li>
-                    <li>
-                      <a href="javascript:void(0);">Menu Item</a>
-                    </li>
-                  </ul>
-                </li>
-              </ul>
-            </li>
-          </ul>
         </div>
+
+        <ul class="sidebar-menu scrollable pos-r">
+          <li class="nav-item mT-30">
+            <a class="sidebar-link" href="datatable.html?resource=testtable">
+              <span class="icon-holder"><i class="c-blue-500 ti-home"></i></span>
+              <span class="title">Test Table</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="sidebar-link" href="tomcat-logs.html">
+              <span class="icon-holder"><i class="c-orange-500 ti-file"></i></span>
+              <span class="title">Tomcat Logs</span>
+            </a>
+          </li>
+        </ul>
       </div>
+    </div>
+      <!-- CRUD MODAL -->
+  <div id="modalOverlay"></div>
 
-      <!-- #Main ============================ -->
-      <div class="page-container">
-        <!-- ### $Topbar ### -->
-        <div class="header navbar">
-          <div class="header-container">
-            <ul class="nav-left">
-              <li>
-                <a id='sidebar-toggle' class="sidebar-toggle" href="javascript:void(0);">
-                  <i class="ti-menu"></i>
-                </a>
-              </li>
-              <li class="search-box">
-                <a class="search-toggle no-pdd-right" href="javascript:void(0);">
-                  <i class="search-icon ti-search pdd-right-10"></i>
-                  <i class="search-icon-close ti-close pdd-right-10"></i>
-                </a>
-              </li>
-              <li class="search-input">
-                <input class="form-control" type="text" placeholder="Search...">
-              </li>
-            </ul>
-            <ul class="nav-right">
-              <li class="notifications dropdown">
-                <span class="counter bgc-red">3</span>
-                <a href="" class="dropdown-toggle no-after" data-bs-toggle="dropdown">
-                  <i class="ti-bell"></i>
-                </a>
+<div id="crudModal">
+  <h3 id="modalTitle"></h3>
+  <form id="crudForm"></form>
 
-                <ul class="dropdown-menu">
-                  <li class="pX-20 pY-15 bdB">
-                    <i class="ti-bell pR-10"></i>
-                    <span class="fsz-sm fw-600 c-grey-900">Notifications</span>
-                  </li>
-                  <li>
-                    <ul class="ovY-a pos-r scrollable lis-n p-0 m-0 fsz-sm">
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/1.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <span>
-                              <span class="fw-500">John Doe</span>
-                              <span class="c-grey-600">liked your <span class="text-dark">post</span>
-                              </span>
-                            </span>
-                            <p class="m-0">
-                              <small class="fsz-xs">5 mins ago</small>
-                            </p>
-                          </div>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/2.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <span>
-                              <span class="fw-500">Moo Doe</span>
-                              <span class="c-grey-600">liked your <span class="text-dark">cover image</span>
-                              </span>
-                            </span>
-                            <p class="m-0">
-                              <small class="fsz-xs">7 mins ago</small>
-                            </p>
-                          </div>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/3.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <span>
-                              <span class="fw-500">Lee Doe</span>
-                              <span class="c-grey-600">commented on your <span class="text-dark">video</span>
-                              </span>
-                            </span>
-                            <p class="m-0">
-                              <small class="fsz-xs">10 mins ago</small>
-                            </p>
-                          </div>
-                        </a>
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="pX-20 pY-15 ta-c bdT">
-                    <span>
-                      <a href="" class="c-grey-600 cH-blue fsz-sm td-n">View All Notifications <i class="ti-angle-right fsz-xs mL-10"></i></a>
-                    </span>
-                  </li>
-                </ul>
-              </li>
-              <li class="notifications dropdown">
-                <span class="counter bgc-blue">3</span>
-                <a href="" class="dropdown-toggle no-after" data-bs-toggle="dropdown">
-                  <i class="ti-email"></i>
-                </a>
+  <button id="btnSave" class="action-btn" style="background:#007bff;color:white;">Save</button>
+  <button onclick="closeModal()" class="action-btn" style="background:#6c757d;color:white;">Cancel</button>
+</div>
+    <!-- Main Content -->
+    <div class="page-container">
 
-                <ul class="dropdown-menu">
-                  <li class="pX-20 pY-15 bdB">
-                    <i class="ti-email pR-10"></i>
-                    <span class="fsz-sm fw-600 c-grey-900">Emails</span>
-                  </li>
-                  <li>
-                    <ul class="ovY-a pos-r scrollable lis-n p-0 m-0 fsz-sm">
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/1.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <div>
-                              <div class="peers jc-sb fxw-nw mB-5">
-                                <div class="peer">
-                                  <p class="fw-500 mB-0">John Doe</p>
-                                </div>
-                                <div class="peer">
-                                  <small class="fsz-xs">5 mins ago</small>
-                                </div>
-                              </div>
-                              <span class="c-grey-600 fsz-sm">
-                                Want to create your own customized data generator for your app...
-                              </span>
-                            </div>
-                          </div>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/2.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <div>
-                              <div class="peers jc-sb fxw-nw mB-5">
-                                <div class="peer">
-                                  <p class="fw-500 mB-0">Moo Doe</p>
-                                </div>
-                                <div class="peer">
-                                  <small class="fsz-xs">15 mins ago</small>
-                                </div>
-                              </div>
-                              <span class="c-grey-600 fsz-sm">
-                                Want to create your own customized data generator for your app...
-                              </span>
-                            </div>
-                          </div>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="" class='peers fxw-nw td-n p-20 bdB c-grey-800 cH-blue bgcH-grey-100'>
-                          <div class="peer mR-15">
-                            <img class="w-3r bdrs-50p" src="https://randomuser.me/api/portraits/men/3.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <div>
-                              <div class="peers jc-sb fxw-nw mB-5">
-                                <div class="peer">
-                                  <p class="fw-500 mB-0">Lee Doe</p>
-                                </div>
-                                <div class="peer">
-                                  <small class="fsz-xs">25 mins ago</small>
-                                </div>
-                              </div>
-                              <span class="c-grey-600 fsz-sm">
-                                Want to create your own customized data generator for your app...
-                              </span>
-                            </div>
-                          </div>
-                        </a>
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="pX-20 pY-15 ta-c bdT">
-                    <span>
-                      <a href="email.html" class="c-grey-600 cH-blue fsz-sm td-n">View All Email <i class="fs-xs ti-angle-right mL-10"></i></a>
-                    </span>
-                  </li>
-                </ul>
-              </li>
-              <li class="dropdown">
-                <a href="" class="dropdown-toggle no-after peers fxw-nw ai-c lh-1" data-bs-toggle="dropdown">
-                  <div class="peer mR-10">
-                    <img class="w-2r bdrs-50p" src="https://randomuser.me/api/portraits/men/10.jpg" alt="">
-                  </div>
-                  <div class="peer">
-                    <span class="fsz-sm c-grey-900">John Doe</span>
-                  </div>
-                </a>
-                <ul class="dropdown-menu fsz-sm">
-                  <li>
-                    <a href="" class="d-b td-n pY-5 bgcH-grey-100 c-grey-700">
-                      <i class="ti-settings mR-10"></i>
-                      <span>Setting</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="" class="d-b td-n pY-5 bgcH-grey-100 c-grey-700">
-                      <i class="ti-user mR-10"></i>
-                      <span>Profile</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="email.html" class="d-b td-n pY-5 bgcH-grey-100 c-grey-700">
-                      <i class="ti-email mR-10"></i>
-                      <span>Messages</span>
-                    </a>
-                  </li>
-                  <li role="separator" class="divider"></li>
-                  <li>
-                    <a href="" class="d-b td-n pY-5 bgcH-grey-100 c-grey-700">
-                      <i class="ti-power-off mR-10"></i>
-                      <span>Logout</span>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-          </div>
-        </div>
+      <main class="main-content bgc-grey-100">
+        <div id="mainContent">
+          <div class="container-fluid">
 
-      <!-- ### $App Screen Content ### -->
-<main class='main-content bgc-grey-100'>
-  <div id='mainContent'>
-    <div class="container-fluid">
-      <h4 class="c-grey-900 mT-10 mB-30">Data Tables</h4>
-      <div class="row">
-        <div class="col-md-12">
-          <div class="bgc-white bd bdrs-3 p-20 mB-20">
-            <h4 class="c-grey-900 mB-20">API Data Table</h4>
+            <h4 class="c-grey-900 mT-10 mB-30">Table Name: <b id="resourceName"></b></h4>
 
-            <table id="dataTable" class="table table-striped table-bordered" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Text</th>
-                  <th>Integer</th>
-                  <th>Float</th>
-                  <th>Boolean</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>DateTime</th>
-                  <th>Tenant Name</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+            <script>
+              document.getElementById("resourceName").innerText = resource;
+            </script>
+
+            <div class="row">
+              <div class="col-md-12">
+                <div class="bgc-white bd bdrs-3 p-20 mB-20">
+
+                  <table id="dataTable" class="table table-striped table-bordered" width="100%">
+                    <thead>
+                      <tr id="tableHead"></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</main>
+      </main>
 
-        <!-- ### $App Screen Footer ### -->
-        <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
-          <span>Copyright © 2025 Designed by <a href="https://colorlib.com" target="_blank" rel="nofollow noopener noreferrer" title="Colorlib">Colorlib</a>. All rights reserved.</span>
-        </footer>
-      </div>
+      <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
+        <span>© 2025 V3 Smart Technologies</span>
+      </footer>
+
     </div>
+<style>
+  .logo img, .logo-auth  {
+    max-width: 70px !important;
+    max-height: 60px !important;
+    width: auto !important;
+    height: auto !important;
+    filter: none !important;
+  }
+   .sidebar-logo a .logo img {
+    height: 17px;
+    width: auto;
+    top:10px;
+    display: block;
+    margin: 23px auto;
+}
+</style>
   </body>
 </html>

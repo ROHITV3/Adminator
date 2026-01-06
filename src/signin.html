@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
     <title>Sign In</title>
     <style>
       #loader {
@@ -32,17 +32,13 @@
         -webkit-animation: sk-scaleout 1.0s infinite ease-in-out;
         animation: sk-scaleout 1.0s infinite ease-in-out;
       }
-    .logo-auth
- {
+      .PAAS {
     max-width: 110px !important;
     max-height: 60px !important;
     width: auto;
     height: auto;
 }
-.logo img, .logo-auth
- {
-    filter: unset;
-}
+      
 
       @-webkit-keyframes sk-scaleout {
         0% { -webkit-transform: scale(0) }
@@ -63,56 +59,145 @@
         }
       }
     </style>
-  </head>
+  <script defer="defer" src="main.js"></script></head>
   <body class="app">
-    <div id='loader'>
+    <div id="loader">
       <div class="spinner"></div>
     </div>
 
-    <script>
-      window.addEventListener('load', function load() {
-        const loader = document.getElementById('loader');
-        setTimeout(function() {
-          loader.classList.add('fadeOut');
-        }, 300);
-      });
-    </script>
+   
     <div class="peers ai-s fxw-nw h-100vh">
-      <div class="d-n@sm- peer peer-greed h-100 pos-r bgr-n bgpX-c bgpY-c bgsz-cv" style='background-image: url("assets/static/images/bg.jpg")'>
+      <div class="d-n@sm- peer peer-greed h-100 pos-r bgr-n bgpX-c bgpY-c bgsz-cv" style='background-image: url("assets/static/images/PAAS Admin Illustration.svg")'>
         <div class="pos-a centerXY">
-          <div class="bgc-white bdrs-50p pos-r" style='width: 120px; height: 120px;'>
-            <img class="pos-a centerXY logo-auth" src="assets/static/images/logo.svg" alt="" style="max-width: 60px; max-height: 60px;">
+          <div class="bgc-white bdrs-50p pos-r" style="width: 120px; height: 120px;">
+            <img class="pos-a centerXY logo-auth PAAS" src="assets/static/images/logo.png" alt="" style="max-width: 110px; max-height: 60px;">
           </div>
         </div>
       </div>
-      <div class="col-12 col-md-4 peer pX-40 pY-80 h-100 bgc-white scrollable pos-r" style='min-width: 320px;'>
+      <div class="col-12 col-md-4 peer pX-40 pY-80 h-100 bgc-white scrollable pos-r" style="min-width: 320px;">
         <h4 class="fw-300 c-grey-900 mB-40">Login</h4>
-        <form>
+       <form id="loginForm">
           <div class="mb-3">
             <label class="text-normal text-dark form-label">Username</label>
-            <input type="email" class="form-control" placeholder="John Doe">
+            <input type="text"  id="username" class="form-control" placeholder="John Doe">
           </div>
           <div class="mb-3">
             <label class="text-normal text-dark form-label">Password</label>
-            <input type="password" class="form-control" placeholder="Password">
+            <input type="password"  id="password" class="form-control" placeholder="Password">
           </div>
           <div class="">
             <div class="peers ai-c jc-sb fxw-nw">
               <div class="peer">
                 <div class="checkbox checkbox-circle checkbox-info peers ai-c">
                   <input type="checkbox" id="inputCall1" name="inputCheckboxesCall" class="peer">
-                  <label for="inputCall1" class=" peers peer-greed js-sb ai-c form-label">
+                  <label for="inputCall1" class="peers peer-greed js-sb ai-c form-label">
                     <span class="peer peer-greed">Remember Me</span>
                   </label>
                 </div>
               </div>
               <div class="peer">
-                <button class="btn btn-primary btn-color">Login</button>
+                <button  type="submit" class="btn btn-primary btn-color">Login</button>
               </div>
             </div>
           </div>
+		   <div id="message" class="alert d-none mt-3"></div>
         </form>
       </div>
     </div>
+	 <!-- ✅ Your JavaScript -->
+    <script>
+      // Loader fade out
+      window.addEventListener("load", () => {
+        const loader = document.getElementById("loader");
+        setTimeout(() => loader.classList.add("fadeOut"), 500);
+      });
+
+      // Login Form
+      const form = document.getElementById("loginForm");
+      const messageBox = document.getElementById("message");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        messageBox.classList.add("d-none");
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        // alert("User: " + username);
+
+        if (!username || !password) {
+          messageBox.className = "alert alert-warning mt-3";
+          messageBox.textContent =
+            "⚠️ Please enter both username and password.";
+          messageBox.classList.remove("d-none");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            "https://paas-uat.v3nity.com/api/auth/login",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "V3-PaaS-App-Key": "d3204ea1c3e2415da315236dc2686494",
+              },
+              body: JSON.stringify({ u: username, p: password }),
+            }
+          );
+
+          console.log("➡️ Response Object:", response);
+          console.log("➡️ Status:", response.status, "OK:", response.ok);
+
+          const rawText = await response.text();
+          console.log("➡️ Raw Response Text:", rawText);
+
+          let data = null;
+          try {
+            data = JSON.parse(rawText);
+            console.log("✅ Parsed JSON:", data);
+          } catch (jsonErr) {
+            console.warn("⚠️ Response is not valid JSON:", jsonErr);
+          }
+
+          if (response.ok && data) {
+            messageBox.className = "alert alert-success mt-3";
+            messageBox.textContent =
+              "✅ Login successful! Redirecting... " +
+              (data.message || "");
+            messageBox.classList.remove("d-none");
+
+            localStorage.setItem("access_token", data.access_token);
+            localStorage.setItem("refresh_token", data.refresh_token);
+
+            setTimeout(() => {
+              window.location.href = "tomcat-logs.html";
+            }, 1500);
+          } else {
+            messageBox.className = "alert alert-danger mt-3";
+            messageBox.textContent =
+              "❌ Login failed. " +
+              (data && data.message
+                ? data.message
+                : "Please check credentials or server response.");
+            messageBox.classList.remove("d-none");
+          }
+        } catch (error) {
+          console.error("🚨 Network or fetch error:", error);
+          messageBox.className = "alert alert-danger mt-3";
+          messageBox.textContent = "⚠️ Network error. Try again later.";
+          messageBox.classList.remove("d-none");
+        }
+      });
+    </script>
+    <style>
+  body .logo-auth {
+    max-width: 110px !important;
+    max-height: 60px !important;
+    width: auto !important;
+    height: auto !important;
+    filter: none !important;
+  }
+</style>
   </body>
 </html>
